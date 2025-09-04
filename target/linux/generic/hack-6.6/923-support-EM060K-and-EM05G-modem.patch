@@ -1,0 +1,45 @@
+--- a/drivers/net/usb/qmi_wwan.c
++++ b/drivers/net/usb/qmi_wwan.c
+@@ -1082,6 +1082,8 @@ static const struct usb_device_id produc
+ 	},
+ 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0125)},	/* Quectel EC25, EC20 R2.0  Mini PCIe */
+ 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0306)},	/* Quectel EP06/EG06/EM06 */
++	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x030b)},	/* Quectel EM060K-GL */
++	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x030e)},	/* Quectel EM05-G */
+ 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0512)},	/* Quectel EG12/EM12 */
+ 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0620)},	/* Quectel EM160R-GL */
+ 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0800)},	/* Quectel RM500Q-GL */
+--- a/drivers/usb/serial/option.c
++++ b/drivers/usb/serial/option.c
+@@ -646,6 +646,8 @@ static const struct usb_device_id option
+ 	{ USB_DEVICE(0x2C7C, 0x0296) }, /* Quectel BG96 */
+ 	{ USB_DEVICE(0x2C7C, 0x0435) }, /* Quectel AG35 */
+ 	{ USB_DEVICE(0x2C7C, 0x6026) }, /* Quectel EC200t */
++	{ USB_DEVICE(0x2C7C, 0x030b) }, /* Quectel EM060K-GL EM120K-GL */
++	{ USB_DEVICE(0x2C7C, 0x030e) }, /* Quectel EM05-G */
+ #endif
+ 	{ USB_DEVICE(0x19d2, 0x0536) },/* MZ386 */
+ 	{ USB_DEVICE(0x19d2, 0x0117) },
+@@ -2364,6 +2366,22 @@ static int option_probe(struct usb_seria
+ 			serial->dev->descriptor.idProduct == cpu_to_le16(0x6026) \
+ 			&& serial->interface->cur_altsetting->desc.bInterfaceNumber<= 1)
+ 		return -ENODEV;
++	if (serial->dev->descriptor.idVendor == cpu_to_le16(0x2C7C)) {
++		__u16 idProduct = le16_to_cpu(serial->dev->descriptor.idProduct);
++		struct usb_interface_descriptor *intf = &serial->interface->cur_altsetting->desc;
++
++		if (intf->bInterfaceClass != 0xFF || intf->bInterfaceSubClass == 0x42) {
++			//ECM, RNDIS, NCM, MBIM, ACM, UAC, ADB
++			return -ENODEV;
++		}
++
++		if ((idProduct&0xF000) == 0x0000) {
++			//MDM interface 4 is QMI
++			if (intf->bInterfaceNumber == 4 && intf->bNumEndpoints == 3
++					&& intf->bInterfaceSubClass == 0xFF && intf->bInterfaceProtocol == 0xFF)
++				return -ENODEV;
++		}
++	}
+ #endif
+ #if 1 //Added by Quectel
+ 	//For USB Auto Suspend
